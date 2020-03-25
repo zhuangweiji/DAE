@@ -13,17 +13,18 @@ import matplotlib
 matplotlib.use('Agg')
 
 
-def plot_feats(feats, note, file_name):
+def plot_feats(feats, feat_type, title, file_name):
     """Draw the spectrogram picture
         :param spec: a feature_dim by num_frames array(real)
         :param note: title of the picture
         :param file_name: name of the file
     """
-    fig = plt.figure(figsize=(20, 5))
+    fig = plt.figure(figsize=(20, 6))
     heatmap = plt.pcolor(feats)
     fig.colorbar(mappable=heatmap)
-    plt.xlabel('Time(s)')
-    plt.ylabel(note)
+    plt.xlabel('Time(ms)')
+    plt.ylabel(feat_type)
+    plt.title(title)
     plt.tight_layout()
     plt.savefig(file_name)
 
@@ -46,8 +47,8 @@ def read_all_data(feat_scp):
 def main():
     ids, feats = read_all_data('/home/storage04/zhuangweiji/workspace/x260remotespace/DAE/feats.scp')
     for i in range(len(ids)):
-        plot_feats(feats[i].T, ids[i],
-                   '/home/storage04/zhuangweiji/workspace/x260remotespace/DAE/'+ ids[i] +'.png')
+        plot_feats(feats[i].T, 'spectrogram', ids[i],
+                   '/home/storage04/zhuangweiji/workspace/x260remotespace/DAE/tmp/'+ ids[i] +'.png')
 
 if __name__ == '__main__':
     main()
