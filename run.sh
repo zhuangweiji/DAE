@@ -1,11 +1,13 @@
 #!/bin/bash
 # Copyright 2020 Beijing Xiaomi Intelligent Technology Co.,Ltd  Weiji Zhuang
-echo "$0  $@ : PID:$$ begining at `hostname -f` when `date +%Y-%m-%d-%T`"
+echo "$0 $@ : PID:$$ begining at `hostname -f` when `date +%Y-%m-%d-%T`"
+
+nj=200
+stage=0
 
 [ -f ./cmd.sh ] && . ./cmd.sh || { echo "Error: No cmd.sh"; exit 1; }
 [ -f ./path.sh ] && . ./path.sh || { echo "Error: No path.sh"; exit 1; }
-nj=200
-stage=0
+[ -f ./utils/parse_options.sh ] && . ./utils/parse_options.sh || { echo "Error:No uparse_options.sh"; exit 1; }
 
 if [ $stage -le 0 ]; then
 utils/copy_data_dir.sh --utt-suffix "-Android" data/orig/Android data/train_Android
@@ -91,7 +93,7 @@ if [ $stage -le 2 ]; then
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --feat-dir=$data_dir \
-    --targets-scp=$target_dir/targets.scp \
+    --targets-scp=$target_dir/feats.scp \
     --dir=$dir  || exit 1;
 fi
 
