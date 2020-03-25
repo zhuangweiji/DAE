@@ -56,7 +56,7 @@ def main():
         fig = plt.figure(figsize=(20, 12))
         for num in range(0, len(feat_dict)):
             feats = read_feats_ark(feat_dict[num][utt])
-            h = plt.subplot(len(feat_dict), 1, num + 1)
+            plt.subplot(len(feat_dict), 1, num + 1)
             heatmap = plt.pcolor(feats.T)
             fig.colorbar(mappable=heatmap)
             plt.xlabel('Time(ms)')
