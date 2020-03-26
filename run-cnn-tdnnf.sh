@@ -3,7 +3,7 @@
 echo "$0 $@ : PID:$$ begining at `hostname -f` when `date +%Y-%m-%d-%T`"
 
 nj=200
-stage=0
+stage=1
 
 [ -f ./cmd.sh ] && . ./cmd.sh || { echo "Error: No cmd.sh"; exit 1; }
 [ -f ./path.sh ] && . ./path.sh || { echo "Error: No path.sh"; exit 1; }
@@ -44,7 +44,7 @@ steps/compute_cmvn_stats.sh --fake  data/test_target
 fi
 
 nnet3_affix=_dae
-dnn_affix=_bn
+dnn_affix=_cnn_tdnnf
 train_stage=-10
 remove_egs=false
 srand=0
@@ -60,15 +60,40 @@ if [ $stage -le 1 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_inputs=$(feat-to-dim scp:${data_dir}/feats.scp -)
   num_targets=$(feat-to-dim scp:${target_dir}/feats.scp -)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python2)
+
+  cnn_opts="l2-regularize=0.03"
+  tdnnf_first_opts="l2-regularize=0.03 bypass-scale=0.0"
+  tdnnf_opts="l2-regularize=0.03"
+  linear_opts="l2-regularize=0.03 orthonormal-constraint=-1.0"
+  prefinal_opts="l2-regularize=0.03"
+  output_opts="l2-regularize=0.015"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=$num_inputs name=input
-  relu-batchnorm-layer name=dnn1 dim=1024 input=Append(-5,-4,-3,-2,-1,0,1,2,3,4,5)
-  relu-batchnorm-layer name=dnn2 dim=1024
-  relu-batchnorm-layer name=dnn3 dim=1024
-  relu-batchnorm-layer name=dnn4 dim=1024
-  output-layer name=output dim=$num_targets include-log-softmax=False objective-type=quadratic
+  batchnorm-component name=input-batchnorm input=input
+  spec-augment-layer name=input-spec-augment freq-max-proportion=0.5 time-zeroed-proportion=0.2 time-mask-max-frames=20
+
+  conv-relu-batchnorm-layer name=cnn1 $cnn_opts height-in=257 height-out=256 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=4 learning-rate-factor=0.333 max-change=0.25
+  conv-relu-batchnorm-layer name=cnn2 $cnn_opts height-in=256 height-out=256 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=4
+  conv-relu-batchnorm-layer name=cnn3 $cnn_opts height-in=256 height-out=128 height-subsample-out=2 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=8
+  conv-relu-batchnorm-layer name=cnn4 $cnn_opts height-in=128 height-out=128 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=8
+  conv-relu-batchnorm-layer name=cnn5 $cnn_opts height-in=128 height-out=64 height-subsample-out=2 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=16
+  conv-relu-batchnorm-layer name=cnn6 $cnn_opts height-in=64 height-out=32 height-subsample-out=2 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=32
+
+  tdnnf-layer name=tdnnf7 $tdnnf_first_opts dim=1024 bottleneck-dim=256 time-stride=0
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1024 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1024 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1024 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1024 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1024 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1024 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=1024 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=1024 bottleneck-dim=160 time-stride=3
+  linear-component name=prefinal-l dim=256 $linear_opts
+  prefinal-layer name=prefinal-out input=prefinal-l $prefinal_opts small-dim=256 big-dim=1024
+  output-layer name=output dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts include-log-softmax=False objective-type=quadratic
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -111,8 +136,4 @@ if [ $stage -le 4 ]; then
     data/test/feats.scp data/test_target/feats.scp \
     data/test_target/target_feats${dnn_affix}.scp figure${dnn_affix}
   python steps/nnet3/report/generate_plots.py $dir $dir/plot
-  #python3 local/plot_multi_feats.py 10 data/test/feats.scp \
-  # data/test_target/feats.scp data/test_target_phase/feats.scp \
-  # data/test_target/target_feats.scp \
-  # data/test_target_fft_log_real/feats.scp data/test_target_fft_log_im/feats.scp figure
 fi
