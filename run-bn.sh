@@ -39,8 +39,8 @@ utils/fix_data_dir.sh data/train_target
 utils/fix_data_dir.sh data/test_target
 local/make_spectrogram.sh --nj $nj --cmd "$train_cmd" --spect-config conf/spect.conf --compress false data/train_target
 steps/compute_cmvn_stats.sh --fake  data/train_target
-#local/make_spectrogram.sh --nj $nj --cmd "$train_cmd" --spect-config conf/spect.conf --compress false data/test_target
-#steps/compute_cmvn_stats.sh --fake  data/test_target
+local/make_spectrogram.sh --nj $nj --cmd "$train_cmd" --spect-config conf/spect.conf --compress false data/test_target
+steps/compute_cmvn_stats.sh --fake  data/test_target
 fi
 
 nnet3_affix=_dae
@@ -50,10 +50,10 @@ remove_egs=false
 srand=0
 cmvn_options="--norm-means=false --norm-vars=false"
 common_egs_dir=
-
 dir=exp/nnet3${nnet3_affix}/tdnn${dnn_affix}
 data_dir=data/train
 target_dir=data/train_target
+
 # prepare neural network
 if [ $stage -le 1 ]; then
   mkdir -p $dir
@@ -101,5 +101,14 @@ fi
 if [ $stage -le 3 ]; then
   echo "start denoising ..."
   nnet3-compute --verbose=2 --use-gpu=no \
-    $dir/final.raw scp:data/test/feats.scp ark,scp:data/test_target/feats.scp,data/test_target/feats.ark
+    $dir/final.raw scp:data/test/feats.scp \
+    scp,ark:data/test_target/target_feats${dnn_affix}.scp,data/test_target/target_feats${dnn_affix}.ark
+fi
+
+# plot
+if [ $stage -le 4 ]; then
+  python local/plot_multi_feats.py 3 \
+    data/test/feats.scp data/test_target/feats.scp \
+    data/test_target/target_feats${dnn_affix}.scp figure${dnn_affix}
+  python steps/nnet3/report/generate_plots.py $dir $dir/plot
 fi
