@@ -8,7 +8,6 @@ import csv
 import sys
 import os
 import shutil
-import re
 from praatio import tgio
 
 
@@ -20,7 +19,7 @@ def readCSV(filename):
 
 
 def csv2tgdict(ctmlist):
-    '''Convert a list of tuples read from the CTM file to a TextGrid dictionary.'''
+    '''Convert a list of tuples read from CTM to a TextGrid dictionary.'''
     out = {}
     for row in ctmlist:
         if row[0] not in out:
@@ -47,9 +46,9 @@ def main():
     outdir -- path to output the textgrid files in
     '''
     if (len(sys.argv) < 3):
-        print "Usage: %s <wav.scp> <outdir> <cmt1> <cmt2> ... <cmtn>" % (sys.argv[0])
+        print("Usage:%s <wavscp> <outdir> <cmt-1>...<cmt-n>\n" % (sys.argv[0]))
         exit(1)
-    print "Converting ctm files to Praat Textgrids...\n",
+    print("Converting ctm files to Praat Textgrids...\n")
     wavscp = sys.argv[1]
     outdir = sys.argv[2]
     #absOutDir = os.path.abspath(outdir)
@@ -63,7 +62,7 @@ def main():
             ctmcsv = readCSV(sys.argv[num])
             tgdict = csv2tgdict(ctmcsv)
             if not os.path.isfile(wavdict[utt]):
-                print "%s not exist!" % (wavdict[utt])
+                print("%s not exist!" % (wavdict[utt]))
                 break
             else:
                 fpath, fname = os.path.split(wavdict[utt])
@@ -72,8 +71,7 @@ def main():
                     sys.argv[num], tgdict[utt], 0, pairedWav=wavdict[utt])
                 tg.addTier(intervalTier)
         tg.save(os.path.join(outdir, utt + '.TextGrid'))
-
-    print "stored in " + outdir
+    print("stored in %s" % (outdir))
 
 
 if __name__ == '__main__':
